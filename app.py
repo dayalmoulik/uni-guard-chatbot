@@ -5,10 +5,11 @@ This file connects input compliance filtering, LLM/RAG processing,
 and output compliance filtering into a single safe workflow.
 """
 
-from compliance.input_filter import check_input_compliance
-from compliance.output_filter import check_output_compliance
-from rag.query import retrieve_context
-from rag.llm import generate_answer
+from uni_guard_chatbot.compliance.input_filter import check_input_compliance
+from uni_guard_chatbot.compliance.output_filter import check_output_compliance
+from uni_guard_chatbot.rag.query import retrieve_context
+from uni_guard_chatbot.rag.llm import generate_answer
+
 
 
 def handle_user_query(user_query: str) -> str:
