@@ -6,161 +6,132 @@ It enforces privacy, PII protection, and academic compliance rules.
 """
 
 import re
-from typing import Dict
+from typing import Tuple
 
-try:
-    import spacy
-    NLP_AVAILABLE = True
-except ImportError:
-    NLP_AVAILABLE = False
+# -------------------------
+# Regex patterns
+# -------------------------
 
+EMAIL_PATTERN = re.compile(r"\b[\w\.-]+@[\w\.-]+\.\w{2,}\b")
+PHONE_PATTERN = re.compile(r"\b\d{10}\b")
+FORM_NUMBER_PATTERN = re.compile(r"\b(form\s*number|ccat\s*form\s*no)\b", re.I)
 
-# -----------------------------
-# Regex-based PII patterns
-# -----------------------------
-PII_PATTERNS = {
-    "email": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+",
-    "phone_number": r"\b\d{10}\b",
-    "student_id": r"\b\d{7,10}\b"
-}
+RANK_PATTERN = re.compile(
+    r"\b(rank|score|marks|percentile|cut[- ]?off)\b", re.I
+)
 
-# -----------------------------
-# Private academic information keywords
-# -----------------------------
-PRIVATE_ACADEMIC_KEYWORDS = [
-    "gpa",
-    "cgpa",
-    "grades",
-    "grade",
-    "marks",
-    "score",
-    "transcript",
-    "rank",
-    "percentage"
-]
+PREDICTION_PATTERN = re.compile(
+    r"\b(will\s+i\s+get|can\s+i\s+get|chance\s+of|get\s+admission|eligible\s+for\s+me)\b",
+    re.I
+)
 
-# -----------------------------
-# Admission decision / advice keywords
-# -----------------------------
-ADMISSION_ADVICE_KEYWORDS = [
-    "will i get admitted",
-    "will i get admission",
-    "chance of admission",
-    "can i get into",
-    "am i eligible",
-    "should i apply"
-]
+ADVICE_PATTERN = re.compile(
+    r"\b(which\s+course\s+should\s+i|best\s+course\s+for\s+me|what\s+should\s+i\s+choose)\b",
+    re.I
+)
 
-# -----------------------------
-# Load spaCy NER model (optional)
-# -----------------------------
-_nlp = None
-if NLP_AVAILABLE:
-    try:
-        _nlp = spacy.load("en_core_web_sm")
-    except OSError:
-        _nlp = None
+IMPERSONATION_PATTERN = re.compile(
+    r"\b(approve|confirm|allocate\s+seat|change\s+centre)\b", re.I
+)
+
+IMPLICIT_PREDICTION_PATTERN = re.compile(
+    r"\b(chance|chances|enough|likely|possibility|odds)\b",
+    re.I
+)
+
+COURSE_ADVICE_PATTERN = re.compile(
+    r"\b(which|what|suggest|recommend).*(course|pg|programme)\b",
+    re.I
+)
+
+IMPERATIVE_AUTHORITY_PATTERN = re.compile(
+    r"\b(allocate|assign|confirm|give\s+me|change|approve)\b",
+    re.I
+)
+
+GUARANTEE_INPUT_PATTERN = re.compile(
+    r"\b(sure\s*shot|guarantee|guaranteed|certain|definite)\b",
+    re.I
+)
 
 
-# -----------------------------
-# Helper functions
-# -----------------------------
-def _contains_pii(text: str) -> Dict | None:
-    """Detect PII using regex."""
-    for pii_type, pattern in PII_PATTERNS.items():
-        if re.search(pattern, text):
-            return {
-                "allowed": False,
-                "rule": "PII_PROTECTION",
-                "reason": f"Detected personal identifier: {pii_type}"
-            }
-    return None
+# -------------------------
+# Main filter
+# -------------------------
 
-
-def _contains_private_academic_info(text: str) -> Dict | None:
-    """Detect requests for private academic information."""
-    text_lower = text.lower()
-    for keyword in PRIVATE_ACADEMIC_KEYWORDS:
-        if keyword in text_lower:
-            return {
-                "allowed": False,
-                "rule": "STUDENT_PRIVACY",
-                "reason": "Request for private academic information"
-            }
-    return None
-
-
-def _contains_admission_advice(text: str) -> Dict | None:
-    """Detect personalized admission advice or predictions."""
-    text_lower = text.lower()
-    for phrase in ADMISSION_ADVICE_KEYWORDS:
-        if phrase in text_lower:
-            return {
-                "allowed": False,
-                "rule": "NO_ADMISSION_ADVICE",
-                "reason": "Request for personalized admission advice or prediction"
-            }
-    return None
-
-
-def _contains_person_name(text: str) -> bool:
+def check_input_compliance(user_query: str) -> Tuple[bool, str]:
     """
-    Detect PERSON entities using spaCy (if available).
-    Used to strengthen privacy checks.
-    """
-    if not _nlp:
-        return False
-
-    doc = _nlp(text)
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            return True
-    return False
-
-
-# -----------------------------
-# Main compliance function
-# -----------------------------
-def check_input_compliance(user_query: str) -> Dict:
-    """
-    Checks whether a user query complies with defined rules.
-
     Returns:
-        {
-            "allowed": bool,
-            "rule": str,
-            "reason": str
-        }
+    (is_allowed, message_or_sanitized_query)
     """
 
-    if not user_query or not user_query.strip():
-        return {
-            "allowed": False,
-            "rule": "INVALID_INPUT",
-            "reason": "Empty or invalid query"
-        }
+    # 1. Block personal identifiers
+    if EMAIL_PATTERN.search(user_query) or PHONE_PATTERN.search(user_query):
+        return (
+            False,
+            "Please do not share personal contact information. "
+            "I can only answer general admission-related questions."
+        )
 
-    # 1. PII detection
-    pii_check = _contains_pii(user_query)
-    if pii_check:
-        return pii_check
+    if FORM_NUMBER_PATTERN.search(user_query):
+        return (
+            False,
+            "I cannot access or use application form numbers or personal identifiers."
+        )
 
-    # 2. Private academic information
-    academic_check = _contains_private_academic_info(user_query)
-    if academic_check:
-        # Strengthen rule if person name is detected
-        if _contains_person_name(user_query):
-            academic_check["reason"] += " about an individual"
-        return academic_check
+    # 2. Block prediction / eligibility judgement
+    if PREDICTION_PATTERN.search(user_query) or RANK_PATTERN.search(user_query):
+        return (
+            False,
+            "I cannot predict admission outcomes or evaluate eligibility based on rank or marks. "
+            "Admissions depend on official counselling and seat availability."
+        )
 
-    # 3. Admission advice / prediction
-    advice_check = _contains_admission_advice(user_query)
-    if advice_check:
-        return advice_check
+    # 3. Block course advice
+    if ADVICE_PATTERN.search(user_query):
+        return (
+            False,
+            "I cannot recommend or choose a course for you. "
+            "I can provide factual information about available programmes."
+        )
 
-    # 4. Passed all checks
-    return {
-        "allowed": True,
-        "rule": "COMPLIANT",
-        "reason": "Query complies with all input policies"
-    }
+    # 4. Block impersonation / authority actions
+    if IMPERSONATION_PATTERN.search(user_query):
+        return (
+            False,
+            "I cannot perform or simulate official admission actions."
+        )
+
+    # 5. Block implicit admission prediction
+    if IMPLICIT_PREDICTION_PATTERN.search(user_query):
+        return (
+            False,
+            "I cannot assess chances, likelihood, or eligibility for admission. "
+            "Admissions depend on official counselling and seat availability."
+        )
+
+    # 6. Block course recommendation requests
+    if COURSE_ADVICE_PATTERN.search(user_query):
+        return (
+            False,
+            "I cannot recommend or choose a course for you. "
+            "I can provide factual information about available programmes."
+        )
+
+    # 7. Block imperative authority commands
+    if IMPERATIVE_AUTHORITY_PATTERN.search(user_query):
+        return (
+            False,
+            "I cannot perform or simulate official admission actions."
+        )
+
+    # 8. Block guarantee-style admission questions
+    if GUARANTEE_INPUT_PATTERN.search(user_query):
+        return (
+            False,
+            "I cannot guarantee or assure admission outcomes. "
+            "Admissions depend on official counselling and seat availability."
+        )
+
+    # 9. Allowed
+    return True, user_query

@@ -1,0 +1,38 @@
+<!--<!DOCTYPE html>
+<html>
+<head>
+  <title>UniGuard Chatbot</title>
+</head>
+<body>
+  <h2>🎓 UniGuard Chatbot</h2>
+
+  <input id="query" size="60" placeholder="Ask a question..." />
+  <button onclick="send()">Send</button>
+
+  <pre id="response"></pre>
+
+  <script>
+    async function send() {
+      const q = document.getElementById("query").value;
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({query: q})
+      });
+      const data = await res.json();
+      document.getElementById("response").textContent = data.response;
+    }
+  </script>
+</body>
+</html>
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UniGuard Test UI</title>
+</head>
+<body>
+  <h1>✅ UI Loaded</h1>
+  <p>If you see this, static files are working.</p>
+</body>
+</html>

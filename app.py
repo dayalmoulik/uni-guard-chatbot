@@ -5,20 +5,20 @@ This file connects input compliance filtering, LLM/RAG processing,
 and output compliance filtering into a single safe workflow.
 """
 
-from uni_guard_chatbot.compliance.input_filter import check_input_compliance
-from uni_guard_chatbot.compliance.output_filter import check_output_compliance
-from uni_guard_chatbot.rag.query import retrieve_context
-from uni_guard_chatbot.rag.llm import generate_answer
+from compliance.input_filter import check_input_compliance
+from compliance.output_filter import check_output_compliance
+from rag.query import retrieve_context
+from rag.llm import generate_answer
 
 
 
 def handle_user_query(user_query: str) -> str:
     # 1. Input compliance
     input_check = check_input_compliance(user_query)
-    if not input_check["allowed"]:
+    if not input_check[0]:
         return (
             f"❌ Cannot process your request.\n"
-            f"Reason: {input_check['reason']}"
+            f"Reason: {input_check[1]}"
         )
 
     # 2. Retrieve context
@@ -32,8 +32,8 @@ def handle_user_query(user_query: str) -> str:
 
     # 4. Output compliance
     output_check = check_output_compliance(raw_response)
-    if not output_check["allowed"]:
-        return output_check["response"]
+    if not output_check[0]:
+        return output_check[1]
 
     # 5. Safe response
-    return output_check["response"]
+    return output_check[1]

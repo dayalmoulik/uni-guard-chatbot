@@ -16,6 +16,9 @@ sentence-transformers>=2.2.0
 # Utilities
 tqdm>=4.66.0
 pypdf>=4.0.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
 
 #LLM
 transformers>=4.38.0

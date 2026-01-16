@@ -45,13 +45,12 @@ def ingest_documents():
     )
 
     # 4. Store in Chroma vector DB
-    vectorstore = Chroma.from_documents(
+    Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
         persist_directory=VECTOR_DB_DIR
     )
 
-    vectorstore.persist()
     print("✅ Vector database created and persisted")
 
 
